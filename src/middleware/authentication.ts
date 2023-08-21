@@ -6,9 +6,11 @@ import { ACCESS_TOKEN_SECRET } from '../config';
 export interface jwtPayload {
   userId: string;
   name: string;
+  email: string;
   role: string[];
   iat: number;
   exp: number;
+  OAuthToken: string;
 }
 
 const auth = (req: Request, res: Response, next: NextFunction) => {

@@ -1,7 +1,7 @@
 import User from '../models/User';
 import Cohort from '../models/Cohort';
-import Week from '../models/Week';
-import Session from '../models/Session';
+import { Week } from '../models/Week';
+import { SessionModel, ISession } from '../models/Session';
 import Comment from '../models/Comment';
 import Review from '../models/Review';
 import { Request, Response } from 'express';
@@ -18,7 +18,7 @@ const createReview = async (req: Request, res: Response) => {
     content,
   });
 
-  const session = await Session.findOneAndUpdate(
+  const session = await SessionModel.findOneAndUpdate(
     { _id: sessionId },
     { $push: { review: review.id } }
   );

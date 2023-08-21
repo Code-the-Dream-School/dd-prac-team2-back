@@ -1,13 +1,14 @@
 import User from '../models/User';
 import Cohort from '../models/Cohort';
-import Session from '../models/Session';
-import Week from '../models/Week';
+import { SessionModel, ISession, IPopulatedSession } from '../models/Session';
+import { Week } from '../models/Week';
 import { Request, Response } from 'express';
 import {
   BadRequestError,
   UnauthenticatedError,
   UnauthorizedError,
 } from '../errors';
+import scheduleEvent from '../utils/createGoogleSchedule';
 
 const createSession = async (req: Request, res: Response) => {
   const { start, end, type, link, weekId } = req.body;
@@ -16,7 +17,7 @@ const createSession = async (req: Request, res: Response) => {
     throw new BadRequestError('Missing values');
   }
 
-  const session = await Session.create({
+  const session = await SessionModel.create({
     start,
     end,
     type,
@@ -32,7 +33,7 @@ const createSession = async (req: Request, res: Response) => {
 };
 
 const getAllSession = async (req: Request, res: Response) => {
-  const sessions = await Session.find({});
+  const sessions = await SessionModel.find({});
 
   if (!sessions) {
     return res
@@ -59,7 +60,7 @@ const getSession = async (req: Request, res: Response) => {
     select: '_id name content ',
   };
 
-  const session = await Session.findOne({ _id: sessionId })
+  const session = await SessionModel.findOne({ _id: sessionId })
     .populate(populateParticipantOptions)
     .populate(populateCreatorOptions)
     .populate(populateDiscussionOptions);
@@ -83,7 +84,7 @@ const updateSession = async (req: Request, res: Response) => {
     );
   }
 
-  const session = await Session.findOneAndUpdate(
+  const session = await SessionModel.findOneAndUpdate(
     { _id: sessionId, creator: req.user.userId },
     req.body,
     { new: true, runValidators: true }
@@ -98,7 +99,7 @@ const updateSession = async (req: Request, res: Response) => {
 const deleteSession = async (req: Request, res: Response) => {
   const { sessionId } = req.params;
 
-  const session = await Session.findByIdAndRemove({
+  const session = await SessionModel.findByIdAndRemove({
     _id: sessionId,
     creator: req.user.userId,
   });
@@ -114,13 +115,13 @@ const updateStatus = async (req: Request, res: Response) => {
   const { userStatus } = req.body;
   const { sessionId } = req.params;
 
-  const sessionUser = await Session.findOneAndUpdate(
+  const sessionUser = await SessionModel.findOneAndUpdate(
     { _id: sessionId, 'participant.user.userInfo': req.user.userId },
     { $set: { 'participant.$.user.userStatus': userStatus } },
     { new: true }
   );
   if (!sessionUser) {
-    const newSessionUser = await Session.findOneAndUpdate(
+    const newSessionUser = await SessionModel.findOneAndUpdate(
       { _id: sessionId },
       {
         $addToSet: {
@@ -137,7 +138,39 @@ const updateStatus = async (req: Request, res: Response) => {
     if (!newSessionUser) {
       throw new BadRequestError('Can not update this session');
     }
-    return res.status(201).json({ newSessionUser });
+
+    let event;
+    if (sessionUser || newSessionUser) {
+      if (userStatus !== 'confirm') {
+        throw new BadRequestError('Can not update your calendar');
+      }
+      const populateCreatorOptions = {
+        path: 'creator',
+        select: 'name ',
+      };
+
+      const sessionInfo = (await SessionModel.findOne({
+        _id: sessionId,
+      }).populate(populateCreatorOptions)) as IPopulatedSession;
+
+      const sessionStart = sessionInfo?.start;
+      const sessionEnd = sessionInfo?.end;
+      const sessionType = sessionInfo?.type;
+      const sessionCreator = sessionInfo?.creator.name;
+
+      if (!sessionType || !sessionEnd || !sessionStart) {
+        throw new BadRequestError('Session does not exist');
+      }
+      event = await scheduleEvent({
+        summary: sessionType,
+        start: sessionStart,
+        end: sessionEnd,
+        email: req.user.email,
+        description: sessionCreator,
+      });
+    }
+
+    return res.status(201).json({ newSessionUser, event });
   }
   return res.status(201).json({ sessionUser });
 };

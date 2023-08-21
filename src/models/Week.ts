@@ -30,13 +30,19 @@ const WeekSchema = new mongoose.Schema<IWeek>(
   { timestamps: true }
 );
 
+const calculateEnd = (start: any) => {
+  const endDate = new Date(start);
+  endDate.setDate(endDate.getDate() + 6);
+  return endDate;
+};
+
 WeekSchema.pre('save', function (next) {
   if (this.start) {
-    const endDate = new Date(this.start);
-    endDate.setDate(endDate.getDate() + 6);
-    this.end = endDate;
+    this.end = calculateEnd(this.start);
   }
   next();
 });
 
-export default mongoose.model('Week', WeekSchema);
+const Week = mongoose.model<IWeek>('Week', WeekSchema);
+
+export { Week, calculateEnd };

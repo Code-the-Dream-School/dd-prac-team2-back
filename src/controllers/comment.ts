@@ -1,7 +1,7 @@
 import User from '../models/User';
 import Cohort from '../models/Cohort';
-import Week from '../models/Week';
-import Session from '../models/Session';
+import { Week } from '../models/Week';
+import { SessionModel, ISession } from '../models/Session';
 import Comment from '../models/Comment';
 import { Request, Response } from 'express';
 import { BadRequestError, UnauthenticatedError } from '../errors';
@@ -18,7 +18,7 @@ const createComment = async (req: Request, res: Response) => {
     name: req.user.userId,
   });
 
-  const session = await Session.findOneAndUpdate(
+  const session = await SessionModel.findOneAndUpdate(
     { _id: sessionId },
     { $push: { discussion: comment.id } }
   );

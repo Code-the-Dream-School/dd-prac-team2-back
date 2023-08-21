@@ -1,10 +1,13 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export interface ISession extends Document {
+interface ISession extends Document {
   type: 'Mentor Session' | 'Student Leader Session';
   start: Date;
   end: Date;
-  creator: Schema.Types.ObjectId;
+  creator: {
+    _id: string;
+    name: string;
+  };
   participant: Array<{
     user: {
       userInfo: Schema.Types.ObjectId;
@@ -14,6 +17,13 @@ export interface ISession extends Document {
   discussion: Array<String>;
   review: Array<String>;
   link: string;
+}
+
+interface IPopulatedSession extends ISession {
+  creator: {
+    _id: string;
+    name: string;
+  };
 }
 
 const SessionSchema = new mongoose.Schema<ISession>(
@@ -67,4 +77,6 @@ const SessionSchema = new mongoose.Schema<ISession>(
   { timestamps: true }
 );
 
-export default mongoose.model('Session', SessionSchema);
+const SessionModel = mongoose.model('Session', SessionSchema);
+
+export { ISession, SessionModel, IPopulatedSession };
