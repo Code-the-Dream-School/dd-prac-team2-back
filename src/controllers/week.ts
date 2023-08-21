@@ -90,39 +90,42 @@ const deleteWeek = async (req: Request, res: Response) => {
 const currentWeek = async (req: Request, res: Response) => {
   const { cohortId, userTimeZone } = req.body;
 
-  try {
-    const populateOptions = {
-      path: 'weeks',
-      select: 'start end',
-    };
-    const cohort = await Cohort.findById({ _id: cohortId }).populate(
-      populateOptions
-    );
-    if (!cohort) {
-      throw new BadRequestError('This cohort does not exist');
-    }
-    const weeks = cohort?.weeks;
-
-    const getCurrentWeek = findCurrentWeek(userTimeZone, weeks);
-
-    const currentWeek = await Week.findById({
-      _id: getCurrentWeek.id,
-    }).populate({
-      path: 'sessions',
-      populate: {
-        path: 'creator',
-        select: 'name',
-      },
-    });
-
-    res.json({
-      status: 'Success',
-      currentWeek,
-    });
-  } catch (err) {
-    console.log(err);
-    throw new BadRequestError('An error has occured');
+  if (!cohortId || !userTimeZone) {
+    throw new BadRequestError('Missing arguments in the request');
   }
+
+  const populateOptions = {
+    path: 'weeks',
+    select: 'start end',
+  };
+  const cohort = await Cohort.findById({ _id: cohortId }).populate(
+    populateOptions
+  );
+  if (!cohort) {
+    throw new BadRequestError('This cohort does not exist');
+  }
+  const weeks = cohort?.weeks;
+
+  if (!weeks || weeks.length === 0) {
+    throw new BadRequestError('Cannot find the current week');
+  }
+
+  const getCurrentWeek = findCurrentWeek(userTimeZone, weeks);
+
+  const currentWeek = await Week.findById({
+    _id: getCurrentWeek.id,
+  }).populate({
+    path: 'sessions',
+    populate: {
+      path: 'creator',
+      select: 'name',
+    },
+  });
+
+  res.json({
+    status: 'Success',
+    currentWeek,
+  });
 };
 
 function findCurrentWeek(userTimeZone: any, weeks: any) {
