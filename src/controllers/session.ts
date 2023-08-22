@@ -175,6 +175,20 @@ const updateStatus = async (req: Request, res: Response) => {
   return res.status(201).json({ sessionUser });
 };
 
+const getUpcomingSessions = async (req: Request, res: Response) => {
+  const userId = req.user.userId;
+  const currentTime = new Date().toISOString();
+
+  const sessions = await SessionModel.find({
+    creator: userId,
+    start: { $gt: currentTime },
+  })
+    .limit(4)
+    .sort({ start: 1 });
+
+  return res.json({ sessions });
+};
+
 export {
   createSession,
   getAllSession,
@@ -182,4 +196,5 @@ export {
   updateSession,
   deleteSession,
   updateStatus,
+  getUpcomingSessions,
 };
